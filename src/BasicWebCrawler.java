@@ -8,21 +8,24 @@ import java.io.File;
 import java.io.FileWriter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 
 public class BasicWebCrawler {
 	
     private HashSet<String> links;
     private int limit;
+    ArrayList<Site> sites;
     
     public BasicWebCrawler() {
         links = new HashSet<String>();
         limit = 0;
     }
 
-    BasicWebCrawler(int limit){
+    public BasicWebCrawler(int limit){
         links = new HashSet<String>();
     	this.limit = limit;
+    	sites = new ArrayList<Site>();
     }
     
     public void getPageLinks(String URL) throws InterruptedException {
@@ -48,15 +51,21 @@ public class BasicWebCrawler {
                 //3. Parse the HTML to extract links to other URLs
                 Elements linksOnPage = document.select("a[href]");
                 //Find the number of outlinks in current URL for report
-                System.out.println(linksOnPage.size());
+                int outlink = linksOnPage.size();
 
                 //Find the number of images in current URL for report
                 Elements imagesOnPage = document.select("img[src]");
-                System.out.println(imagesOnPage.size());
+                int image = imagesOnPage.size();
                 
                 //Get Response Status
                 Response response = Jsoup.connect(URL).followRedirects(false).execute();
-                System.out.println(response.statusCode());
+                int status = response.statusCode();
+                
+                //Create name for new file
+                String directory = "repository/html_" + (links.size()) + ".html";
+                
+                Site newsite = new Site(URL, directory, status, outlink, image);
+                sites.add(newsite);
                 
                 //5. For each extracted URL... go back to Step 4.
                 for (Element page : linksOnPage) {
@@ -73,7 +82,6 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	//Will need different filename for each html
     	File file = new File("/Users/wilsenkosasih/desktop/test.html");
     	String html = Doc.html();
         
@@ -86,7 +94,18 @@ public class BasicWebCrawler {
     
     public static void main(String[] args) throws InterruptedException {
         //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(1000);
+    	BasicWebCrawler BWC = new BasicWebCrawler(3);
     	BWC.getPageLinks("http://www.google.com/");
+    	
+    	//Access
+    	for(int i = 0; i < BWC.sites.size(); i++) {
+    		Site a = BWC.sites.get(i);
+    		System.out.println();
+    		System.out.println(a.getUrl());
+    		System.out.println(a.getDir());
+    		System.out.println(a.getStatus());
+    		System.out.println(a.getOutlink());
+    		System.out.println(a.getImages());
+    	}
     }
 }
