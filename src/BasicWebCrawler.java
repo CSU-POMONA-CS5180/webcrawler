@@ -15,23 +15,33 @@ public class BasicWebCrawler {
 	
     private HashSet<String> links;
     private int limit;
-    ArrayList<Site> sites;
+    private ArrayList<Site> sites;
+    private String scope;
     
     public BasicWebCrawler() {
         links = new HashSet<String>();
         limit = 0;
+    	sites = new ArrayList<Site>();
+    	scope = "";
     }
 
     public BasicWebCrawler(int limit){
         links = new HashSet<String>();
     	this.limit = limit;
     	sites = new ArrayList<Site>();
+    	scope = "";
+    }
+    
+    public BasicWebCrawler(int limit, String scope){
+        links = new HashSet<String>();
+    	this.limit = limit;
+    	sites = new ArrayList<Site>();
+    	this.scope = scope;
     }
     
     public void getPageLinks(String URL) throws InterruptedException {
-        //4. Check if you have already crawled the URLs 
-        //(we are intentionally not checking for duplicate content in this example)
-        if (!links.contains(URL)) {
+        //4. Check if you have already crawled the URLs & check the scope
+        if (!links.contains(URL) && URL.contains(scope)) {
             try {
                 //4. (i) If not add it to the index
                 if (links.size() < limit && links.add(URL) ) {
@@ -82,7 +92,7 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	File file = new File("/Users/wilsenkosasih/desktop/test.html");
+    	File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
     	String html = Doc.html();
         
 		FileWriter fileWriter = new FileWriter(file);
@@ -94,8 +104,8 @@ public class BasicWebCrawler {
     
     public static void main(String[] args) throws InterruptedException {
         //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(3);
-    	BWC.getPageLinks("http://www.google.com/");
+    	BasicWebCrawler BWC = new BasicWebCrawler(3, "www.google.com/about/");
+    	BWC.getPageLinks("http://www.google.com/about/");
     	
     	//Access
     	for(int i = 0; i < BWC.sites.size(); i++) {
