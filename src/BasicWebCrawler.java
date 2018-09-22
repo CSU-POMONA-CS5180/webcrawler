@@ -82,7 +82,7 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	File file = new File("/Users/wilsenkosasih/desktop/test.html");
+    	File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
     	String html = Doc.html();
         
 		FileWriter fileWriter = new FileWriter(file);
