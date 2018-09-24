@@ -7,7 +7,6 @@ import org.jsoup.select.Elements;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,7 +42,10 @@ public class BasicWebCrawler {
     
     public void getPageLinks(String URL) throws InterruptedException {
         //4. Check if you have already crawled the URLs & check the scope
-        if (!links.contains(URL) && URL.contains(scope)) {
+    	boolean notDupe = !links.contains(URL) && !URL.contains("?") && !URL.contains("#");
+    	boolean withinScope = URL.contains(scope);
+    	
+        if (notDupe && withinScope) {
             try {
                 //4. (i) If not add it to the index
                 if (links.size() < limit) {
@@ -52,17 +54,16 @@ public class BasicWebCrawler {
                 }
                 else {
                 	return;
-                }
+                }   
                 
-                //2. Fetch the HTML code
-                Document document = Jsoup.connect(URL).get();
+                //Fetch the HTML code
+                Document document = Jsoup.connect(URL).ignoreHttpErrors(true).get();
                 System.out.println("made it");
-                producePage(document);
                 
                 //To set a delay for accessing the same 
             	//Thread.sleep(5*1000); 
 
-                //3. Parse the HTML to extract links to other URLs
+                //Parse the HTML to extract links to other URLs
                 Elements linksOnPage = document.select("a[href]");
                 //Find the number of outlinks in current URL for report
                 int outlink = linksOnPage.size();
@@ -70,16 +71,25 @@ public class BasicWebCrawler {
                 //Find the number of images in current URL for report
                 Elements imagesOnPage = document.select("img[src]");
                 int image = imagesOnPage.size();
-                
-                //Get Response Status
-                Response response = Jsoup.connect(URL).followRedirects(false).execute();
-                int status = response.statusCode();
-                
+              
                 //Create name for new file
                 String directory = "repository/html_" + (links.size()) + ".html";
                 
+                //Get Response Status
+                Response response = Jsoup.connect(URL).followRedirects(false).ignoreHttpErrors(true).execute();
+                int status = response.statusCode();
+                /*if (status == 404) {
+                    String directory = "repository/html_" + (links.size()) + ".html";
+                	Site newsite = new Site(URL, directory, status, 0, 0);
+                    sites.add(newsite);
+                    //return;
+                }*/
+                
                 Site newsite = new Site(URL, directory, status, outlink, image);
                 sites.add(newsite);
+                
+                producePage(document);
+
                 
                 //5. For each extracted URL... go back to Step 4.
                 for (Element page : linksOnPage) {
@@ -113,7 +123,8 @@ public class BasicWebCrawler {
     	String html = "<div><h1>Welcome to our Web-Crawler Page!</h1><p>Results are shown below...";
     	
     	File f = new File("C:\\Users\\Vincent\\Desktop\\report.html");
-    	
+    	//File f = new File("/Users/wilsenkosasih/desktop/report.html");
+
     	try{
             //1. clickable link to crawled URL.
             //2. link to downloaded page in repo folder.
@@ -156,7 +167,7 @@ public class BasicWebCrawler {
     
     public static void main(String[] args) throws InterruptedException {
         //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(40, "www.google.com/about/");
+    	BasicWebCrawler BWC = new BasicWebCrawler(50, "www.google.com/about/");
     	BWC.getPageLinks("https://www.google.com/about/");
     	
     	BWC.printToHTML(BWC);
