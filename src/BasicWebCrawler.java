@@ -44,8 +44,8 @@ public class BasicWebCrawler {
         //4. Check if you have already crawled the URLs & check the scope
     	boolean notDupe = !links.contains(URL) && !URL.contains("?") && !URL.contains("#");
     	boolean withinScope = URL.contains(scope);
-    	
-        if (notDupe && withinScope) {
+    	boolean notUnsupported = !URL.contains(".pdf");
+        if (notDupe && withinScope && notUnsupported) {
             try {
                 //4. (i) If not add it to the index
                 if (links.size() < limit) {
@@ -59,6 +59,7 @@ public class BasicWebCrawler {
                 //Fetch the HTML code
                 Document document = Jsoup.connect(URL).ignoreHttpErrors(true).get();
                 System.out.println("made it");
+                producePage(document);
                 
                 //To set a delay for accessing the same 
             	//Thread.sleep(5*1000); 
@@ -88,9 +89,6 @@ public class BasicWebCrawler {
                 Site newsite = new Site(URL, directory, status, outlink, image);
                 sites.add(newsite);
                 
-                producePage(document);
-
-                
                 //5. For each extracted URL... go back to Step 4.
                 for (Element page : linksOnPage) {
                 		getPageLinks(page.attr("abs:href"));
@@ -106,8 +104,8 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	//File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
-    	File file = new File("C:\\Users\\Vincent\\Desktop\\repository\\html_"+ links.size() + ".html");
+    	File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
+    	//File file = new File("C:\\Users\\Vincent\\Desktop\\repository\\html_"+ links.size() + ".html");
     	
     	String html = Doc.html();
         
@@ -122,8 +120,8 @@ public class BasicWebCrawler {
     	
     	String html = "<div><h1>Welcome to our Web-Crawler Page!</h1><p>Results are shown below...";
     	
-    	File f = new File("C:\\Users\\Vincent\\Desktop\\report.html");
-    	//File f = new File("/Users/wilsenkosasih/desktop/report.html");
+    	//File f = new File("C:\\Users\\Vincent\\Desktop\\report.html");
+    	File f = new File("/Users/wilsenkosasih/desktop/report.html");
 
     	try{
             //1. clickable link to crawled URL.
@@ -167,8 +165,8 @@ public class BasicWebCrawler {
     
     public static void main(String[] args) throws InterruptedException {
         //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(50, "www.google.com/about/");
-    	BWC.getPageLinks("https://www.google.com/about/");
+    	BasicWebCrawler BWC = new BasicWebCrawler(50, "pixelsquid.com/png/");
+    	BWC.getPageLinks("https://www.pixelsquid.com/png/coffee-carafe-1292909618049062503?image=G07");
     	
     	BWC.printToHTML(BWC);
     }
