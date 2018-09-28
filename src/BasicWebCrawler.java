@@ -11,6 +11,7 @@ import java.io.BufferedWriter;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,41 +19,93 @@ import java.util.HashSet;
 public class BasicWebCrawler {
 	
     private HashSet<String> links; // data structure to keep unique links
+    private HashSet<String> disallowed_links; // data structure to keep unique links
+    private HashSet<String> checked_base;
     private int limit; // # of links to crawl
     private ArrayList<Site> sites; // list of Site objects 
     private String scope; // restrict domain
     
     public BasicWebCrawler() {
         links = new HashSet<String>();
+        disallowed_links =  new HashSet<String>();
+        checked_base = new HashSet<String>();
         limit = 0;
-    	sites = new ArrayList<Site>();
-    	scope = "";
+    		sites = new ArrayList<Site>();
+    		scope = "";
     }
 
     public BasicWebCrawler(int limit){
         links = new HashSet<String>();
-    	this.limit = limit;
-    	sites = new ArrayList<Site>();
-    	scope = "";
+        disallowed_links =  new HashSet<String>();
+        checked_base = new HashSet<String>();
+    		this.limit = limit;
+    		sites = new ArrayList<Site>();
+    		scope = "";
     }
     
     public BasicWebCrawler(int limit, String scope){
         links = new HashSet<String>();
-    	this.limit = limit;
-    	sites = new ArrayList<Site>();
-    	this.scope = scope;
+        disallowed_links =  new HashSet<String>();
+        checked_base = new HashSet<String>();
+        this.limit = limit;
+    		sites = new ArrayList<Site>();
+    		this.scope = scope;
     }
     
-    public void getPageLinks(String URL) throws InterruptedException {
+    public void getPageLinks(String URL) throws InterruptedException, IOException {
         //4. Check if you have already crawled the URLs & check the scope
-    	boolean notDupe = !links.contains(URL) && !URL.contains("?") && !URL.contains("#");
-    	boolean withinScope = URL.contains(scope);
-    	boolean notUnsupported = !URL.contains(".pdf");
-        if (notDupe && withinScope && notUnsupported) {
-            try {
-                //4. (i) If not add it to the index
+
+		boolean sectionOrForm = URL.contains("?") || URL.contains("#");
+    		boolean withinScope = URL.contains(scope);
+    		if(links.size() >= limit || !withinScope || sectionOrForm)
+    			return;
+    	
+    		String URL2, URL3, URL4 = "";
+    		URL url = new URL(URL);
+    		    		
+    		if((url.getProtocol() == "http")) {
+    			URL2 = "https://" + url.getHost() + url.getPath();
+    			if(URL.endsWith("/")) {
+    				URL3 = URL.substring(0, URL.length()-1);
+    				URL4 = URL2.substring(0, URL2.length()-1);
+    			}
+    			else {
+    				URL3 = URL + "/";
+    				URL4 = URL2 + "/";
+    			}
+    		}
+    		else {
+    			URL2 = "http://" + url.getHost() + url.getPath();
+    			if(URL.endsWith("/")) {
+    				URL3 = URL.substring(0, URL.length()-1);
+    				URL4 = URL2.substring(0, URL2.length()-1);
+    			}
+    			else {
+    				URL3 = URL + "/";
+    				URL4 = URL2 + "/";
+    			}
+    		}
+    		
+    		if(!checked_base.contains(url.getHost()))
+    		{
+    			// fetch all robots.txt rules for user-agent:
+    			System.out.println(URL);
+    			String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
+    			// load robots.txt rules into links
+    			if(fetchRobotRules != null)
+    				loadLinks(fetchRobotRules);		
+    			
+    			checked_base.add(url.getHost());
+    		}
+    		
+    		boolean notDupe = !links.contains(URL) && !links.contains(URL2) &&!links.contains(URL3) &&!links.contains(URL4);    			boolean notForbidden = !disallowed_links.contains(URL) && !disallowed_links.contains(URL2)
+    				&& !disallowed_links.contains(URL3) && !disallowed_links.contains(URL4);
+    		boolean notUnsupported = !URL.contains(".pdf");
+        if (notDupe && notUnsupported && notForbidden) {
+            try {                         
+            		//4. (i) If not add it to the index
                 if (links.size() < limit) {
-                	links.add(URL);
+                		links.add(URL);
                     System.out.println(URL);
                 }
                 else {
@@ -65,7 +118,7 @@ public class BasicWebCrawler {
                 producePage(document);
                 
                 //To set a delay for accessing the same 
-            	//Thread.sleep(5*1000); 
+            		//Thread.sleep(5*1000); 
 
                 //Parse the HTML to extract links to other URLs
                 Elements linksOnPage = document.select("a[href]");
@@ -82,12 +135,6 @@ public class BasicWebCrawler {
                 //Get Response Status
                 Response response = Jsoup.connect(URL).followRedirects(false).ignoreHttpErrors(true).execute();
                 int status = response.statusCode();
-                /*if (status == 404) {
-                    String directory = "repository/html_" + (links.size()) + ".html";
-                	Site newsite = new Site(URL, directory, status, 0, 0);
-                    sites.add(newsite);
-                    //return;
-                }*/
                 
                 Site newsite = new Site(URL, directory, status, outlink, image);
                 sites.add(newsite);
@@ -107,9 +154,9 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	//File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
+    	File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
     	//File file = new File("C:\\Users\\Vincent\\Desktop\\repository\\html_"+ links.size() + ".html");
-    	File file = new File("C:\\Users\\snowf\\Desktop\\repository\\html_"+ links.size() + ".html");
+    	//File file = new File("C:\\Users\\snowf\\Desktop\\repository\\html_"+ links.size() + ".html");
     	
     	String html = Doc.html();
         
@@ -125,8 +172,8 @@ public class BasicWebCrawler {
     	String html = "<div><h1>Welcome to our Web-Crawler Page!</h1><p>Results are shown below...";
     	
     	//File f = new File("C:\\Users\\Vincent\\Desktop\\report.html");
-    	//File f = new File("/Users/wilsenkosasih/desktop/report.html");
-    	File f = new File("/Users/snowf/Desktop/report.html");
+    	File f = new File("/Users/wilsenkosasih/desktop/report.html");
+    	//File f = new File("/Users/snowf/Desktop/report.html");
 
     	try{
             //1. clickable link to crawled URL.
@@ -178,9 +225,9 @@ public class BasicWebCrawler {
 	public void loadLinks(String[] input) {
 		
 		for(int i = 0; i < input.length ; ++i) {
-			links.add(input[i]);
+			disallowed_links.add(input[i]);
 		}
-		System.out.println(links.toString());				// used to check links data	
+		System.out.println(disallowed_links.toString());				// used to check disallowed_links data	
 	}
 	
 	
@@ -190,12 +237,21 @@ public class BasicWebCrawler {
 	 * 
 	 * @param URL String. ex. "http://www.google.com"
 	 * @return String[] all disallowed addresses
+	 * @throws IOException 
 	 */
-	public String[] fetchRobotRules(String URL) {
+	public String[] fetchRobotRules(String URL) throws IOException {
 
 		ArrayList<String> roboRules = new ArrayList<String>();
 		
 		String[] disallowedURL = null;
+		
+		//Check if robots.txt exist
+		URL url = new URL(URL);
+		Response response = Jsoup.connect("https://" + url.getHost() + "/robots.txt").followRedirects(false).ignoreHttpErrors(true).execute();
+        int status = response.statusCode();        
+        if (status == 404) {
+        		return disallowedURL;
+        }
 		
 		try(BufferedReader input = new BufferedReader(
 				new InputStreamReader(new URL( URL + "/robots.txt").openStream())))	// getting all input from robots.txt 
@@ -228,24 +284,12 @@ public class BasicWebCrawler {
 		}
 		return disallowedURL;
 	}
-
-	
-	
     
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {		
+    		//1. Pick a URL from the frontier
+    		BasicWebCrawler BWC = new BasicWebCrawler(50, "yahoo.com");
     	
-	
-			
-        //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
-    	//BasicWebCrawler BWC = new BasicWebCrawler(50, "pixelsquid.com/png/");
-    	
-    	String[] fetchRobotRules = BWC.fetchRobotRules("http://www.google.com");		// fetch all robots.txt rules for user-agent: *
-    	
-	BWC.loadLinks(fetchRobotRules);														// load robots.txt rules into links
-    	
-    	BWC.getPageLinks("https://www.google.com");
-    	//BWC.getPageLinks("https://www.pixelsquid.com/png/coffee-carafe-1292909618049062503?image=G07");
-    	BWC.printToHTML(BWC);
+    		BWC.getPageLinks("https://www.yahoo.com");
+    		BWC.printToHTML(BWC);
     }
 }
