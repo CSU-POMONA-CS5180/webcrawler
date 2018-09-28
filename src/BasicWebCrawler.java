@@ -6,9 +6,12 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -104,8 +107,9 @@ public class BasicWebCrawler {
     //Produce html file of current URL
     public void producePage(Document Doc) throws IOException {
     	//Replace the destination & output file name
-    	File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
+    	//File file = new File("/Users/wilsenkosasih/desktop/repository/html_"+ links.size() + ".html");
     	//File file = new File("C:\\Users\\Vincent\\Desktop\\repository\\html_"+ links.size() + ".html");
+    	File file = new File("C:\\Users\\snowf\\Desktop\\repository\\html_"+ links.size() + ".html");
     	
     	String html = Doc.html();
         
@@ -121,7 +125,8 @@ public class BasicWebCrawler {
     	String html = "<div><h1>Welcome to our Web-Crawler Page!</h1><p>Results are shown below...";
     	
     	//File f = new File("C:\\Users\\Vincent\\Desktop\\report.html");
-    	File f = new File("/Users/wilsenkosasih/desktop/report.html");
+    	//File f = new File("/Users/wilsenkosasih/desktop/report.html");
+    	File f = new File("/Users/snowf/Desktop/report.html");
 
     	try{
             //1. clickable link to crawled URL.
@@ -163,11 +168,84 @@ public class BasicWebCrawler {
         }
     }
     
+	
+	/**
+	 * loads all parameter input into the links HashSet. This is primarily 
+	 * used to initially load disallowed addresses from robots.txt
+	 * 
+	 * @param input String[] 
+	 */
+	public void loadLinks(String[] input) {
+		
+		for(int i = 0; i < input.length ; ++i) {
+			links.add(input[i]);
+		}
+		System.out.println(links.toString());				// used to check links data	
+	}
+	
+	
+	
+	/**
+	 * fetches the disallowed addresses of a website and returns in String form
+	 * 
+	 * @param URL String. ex. "http://www.google.com"
+	 * @return String[] all disallowed addresses
+	 */
+	public String[] fetchRobotRules(String URL) {
+
+		ArrayList<String> roboRules = new ArrayList<String>();
+		
+		String[] disallowedURL = null;
+		
+		try(BufferedReader input = new BufferedReader(
+				new InputStreamReader(new URL( URL + "/robots.txt").openStream())))	// getting all input from robots.txt 
+		{
+			String line = null;
+			loop: while((line = input.readLine()) != null) {		// going through robots.txt file as long as next line exists
+				
+				if(line.equalsIgnoreCase("user-agent: *")) {		// looking for user-agent: * for all web-crawl agents
+					while((line = input.readLine()) != null) {		// while the next line exists
+						
+						if(line.toLowerCase().contains("user-agent") || line.toLowerCase().startsWith("#")
+								|| line.toLowerCase().contains("sitemap:")) { // arrived at another set of agent rules, or a comment, or sitemap info 
+							break loop;											// so break loop
+						}
+						if(line.toLowerCase().contains("disallow:")) {
+							roboRules.add(line);						// add line to 
+						}		
+					}			
+				}
+			}
+			disallowedURL = new String[roboRules.size()];
+			
+			for(int i = 0; i < roboRules.size(); ++i) {
+					
+				disallowedURL[i] = URL + roboRules.get(i).substring(10);
+			}
+			
+		}catch(Exception e) {
+			System.out.println("file not found");						// file not found. only yahoo.com did this when testing for some reason
+		}
+		return disallowedURL;
+	}
+
+	
+	
+    
     public static void main(String[] args) throws InterruptedException {
-        //1. Pick a URL from the frontier
-    	BasicWebCrawler BWC = new BasicWebCrawler(50, "pixelsquid.com/png/");
-    	BWC.getPageLinks("https://www.pixelsquid.com/png/coffee-carafe-1292909618049062503?image=G07");
     	
+	
+			
+        //1. Pick a URL from the frontier
+    	BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
+    	//BasicWebCrawler BWC = new BasicWebCrawler(50, "pixelsquid.com/png/");
+    	
+    	String[] fetchRobotRules = BWC.fetchRobotRules("http://www.google.com");		// fetch all robots.txt rules for user-agent: *
+    	
+	BWC.loadLinks(fetchRobotRules);														// load robots.txt rules into links
+    	
+    	BWC.getPageLinks("https://www.google.com");
+    	//BWC.getPageLinks("https://www.pixelsquid.com/png/coffee-carafe-1292909618049062503?image=G07");
     	BWC.printToHTML(BWC);
     }
 }
