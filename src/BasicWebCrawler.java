@@ -18,13 +18,14 @@ import java.util.HashSet;
 
 public class BasicWebCrawler {
 	
-    private HashSet<String> links; // data structure to keep unique links
-    private HashSet<String> disallowed_links; // data structure to keep unique links
-    private HashSet<String> checked_base;
+    private HashSet<String> links; // data structure to keep unique to get information/crawl from
+    private HashSet<String> disallowed_links; // data structure to keep list of disallowed links
+    private HashSet<String> checked_base; //data structure to keep a list of hosts whose robots.txt have been checked
     private int limit; // # of links to crawl
     private ArrayList<Site> sites; // list of Site objects 
     private String scope; // restrict domain
-    
+
+	//Constructors
     public BasicWebCrawler() {
     	links = new HashSet<String>();
   	disallowed_links =  new HashSet<String>();
@@ -51,16 +52,23 @@ public class BasicWebCrawler {
    	sites = new ArrayList<Site>();
     	this.scope = scope;
     }
-    
+	
+    //Function to crawl a site, given its URL
     public void getPageLinks(String URL) throws InterruptedException, IOException {
-        //4. Check if you have already crawled the URLs & check the scope
-
+	//Check if the URL contains specific character "?" (input) and "#" (section), and whether it's within scope
     	boolean sectionOrForm = URL.contains("?") || URL.contains("#");
     	boolean withinScope = URL.contains(scope);
     	if(links.size() >= limit || !withinScope || sectionOrForm)
     		return;
-    	
-   	String URL2, URL3, URL4 = "";
+	    
+    	/*Form strings to avoid duplicate links formed by different protocol (http vs https) & directories "/", 
+   		e.g. Given URL http://www.google.com/about, check if
+		URL2 = https://www.google.com/about
+		URL3 = http://www.google.com/about/
+		URL4 = https://www.google.com/about/
+		has already been crawled before
+	*/
+	String URL2, URL3, URL4 = "";
    	URL url = new URL(URL);
     		    		
    	if((url.getProtocol() == "http")) {
@@ -86,23 +94,24 @@ public class BasicWebCrawler {
    		}
    	}
     		
-   	if(!checked_base.contains(url.getHost())){
-   		// fetch all robots.txt rules for user-agent:
+   	//Check if the URL host's robots.txt has been checked
+	if(!checked_base.contains(url.getHost())){
     		System.out.println(URL);
+		// fetch all robots.txt rules for user-agent:
     		String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
-    		// load robots.txt rules into links
+    		// load robots.txt rules into links, if it exists
     		if(fetchRobotRules != null)
     			loadLinks(fetchRobotRules);		
-    			
+    		// Add the host URL into the hashset to avoid repetitive rechecking 
     		checked_base.add(url.getHost());
     	}
-    		
+    	
+	//Check if the URL is a duplicate of an crawled link and wether or not it's disallowed based on the collected rules    
     	boolean notDupe = !links.contains(URL) && !links.contains(URL2) &&!links.contains(URL3) &&!links.contains(URL4);    			
     	boolean notForbidden = !disallowed_links.contains(URL) && !disallowed_links.contains(URL2) && !disallowed_links.contains(URL3) && !disallowed_links.contains(URL4);
-    	//boolean notUnsupported = !URL.contains(".pdf");
     	if (notDupe && notForbidden) {
           try {                       
-        	  //Get Response Status & Check file type
+        	  //Get Response Status & Check file type 
         	  Response response = Jsoup.connect(URL).followRedirects(false).ignoreHttpErrors(true).ignoreContentType(true).execute();
         	  int status = response.statusCode();
         	  String contentType = response.contentType();
@@ -112,7 +121,7 @@ public class BasicWebCrawler {
                 								contentType.contains("application/xml") ||
                 								contentType.contains("application/xhtml+xml");
                 
-        	  //4. (i) If not add it to the index
+        	  //If number of pages crawled is still under the limit & it is an accepted type, add it to the list to be crawled
         	  if (links.size() < limit && accepted_content_type) {
                 	links.add(URL);
                     System.out.println(URL);
@@ -140,20 +149,17 @@ public class BasicWebCrawler {
               
         	  //Create name for new file
         	  String directory = "repository/html_" + (links.size()) + ".html";
-               
-                
+              
         	  Site newsite = new Site(URL, directory, status, outlink, image);
         	  sites.add(newsite);
                 
-        	  //5. For each extracted URL... go back to Step 4.
+        	  //For each extracted URL... crawl them
         	  for (Element page : linksOnPage) {
         		  getPageLinks(page.attr("abs:href"));
         	  }
             } catch (IOException e) {
                 System.err.println("For '" + URL + "': " + e.getMessage());
-            } /*catch (InterruptedException e) {
-                System.err.println("For '" + URL + "': " + e.getMessage());
-            }*/
+            } 
         }
     }
 
