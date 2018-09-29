@@ -30,17 +30,17 @@ public class BasicWebCrawler {
         disallowed_links =  new HashSet<String>();
         checked_base = new HashSet<String>();
         limit = 0;
-    		sites = new ArrayList<Site>();
-    		scope = "";
+    	sites = new ArrayList<Site>();
+    	scope = "";
     }
 
     public BasicWebCrawler(int limit){
         links = new HashSet<String>();
         disallowed_links =  new HashSet<String>();
         checked_base = new HashSet<String>();
-    		this.limit = limit;
-    		sites = new ArrayList<Site>();
-    		scope = "";
+    	this.limit = limit;
+    	sites = new ArrayList<Site>();
+    	scope = "";
     }
     
     public BasicWebCrawler(int limit, String scope){
@@ -48,101 +48,108 @@ public class BasicWebCrawler {
         disallowed_links =  new HashSet<String>();
         checked_base = new HashSet<String>();
         this.limit = limit;
-    		sites = new ArrayList<Site>();
-    		this.scope = scope;
+    	sites = new ArrayList<Site>();
+    	this.scope = scope;
     }
     
     public void getPageLinks(String URL) throws InterruptedException, IOException {
         //4. Check if you have already crawled the URLs & check the scope
 
-		boolean sectionOrForm = URL.contains("?") || URL.contains("#");
-    		boolean withinScope = URL.contains(scope);
-    		if(links.size() >= limit || !withinScope || sectionOrForm)
-    			return;
+    	boolean sectionOrForm = URL.contains("?") || URL.contains("#");
+    	boolean withinScope = URL.contains(scope);
+    	if(links.size() >= limit || !withinScope || sectionOrForm)
+    		return;
     	
-    		String URL2, URL3, URL4 = "";
-    		URL url = new URL(URL);
+   		String URL2, URL3, URL4 = "";
+   		URL url = new URL(URL);
     		    		
-    		if((url.getProtocol() == "http")) {
-    			URL2 = "https://" + url.getHost() + url.getPath();
-    			if(URL.endsWith("/")) {
-    				URL3 = URL.substring(0, URL.length()-1);
-    				URL4 = URL2.substring(0, URL2.length()-1);
-    			}
-    			else {
-    				URL3 = URL + "/";
-    				URL4 = URL2 + "/";
-    			}
+   		if((url.getProtocol() == "http")) {
+    		URL2 = "https://" + url.getHost() + url.getPath();
+    		if(URL.endsWith("/")) {
+    			URL3 = URL.substring(0, URL.length()-1);
+   				URL4 = URL2.substring(0, URL2.length()-1);
     		}
     		else {
-    			URL2 = "http://" + url.getHost() + url.getPath();
-    			if(URL.endsWith("/")) {
-    				URL3 = URL.substring(0, URL.length()-1);
-    				URL4 = URL2.substring(0, URL2.length()-1);
-    			}
-    			else {
-    				URL3 = URL + "/";
-    				URL4 = URL2 + "/";
-    			}
+    			URL3 = URL + "/";
+    			URL4 = URL2 + "/";
     		}
+   		}
+   		else {
+   			URL2 = "http://" + url.getHost() + url.getPath();
+   			if(URL.endsWith("/")) {
+   				URL3 = URL.substring(0, URL.length()-1);
+   				URL4 = URL2.substring(0, URL2.length()-1);
+   			}
+   			else {
+   				URL3 = URL + "/";
+   				URL4 = URL2 + "/";
+   			}
+   		}
     		
-    		if(!checked_base.contains(url.getHost()))
-    		{
-    			// fetch all robots.txt rules for user-agent:
-    			System.out.println(URL);
-    			String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
-    			// load robots.txt rules into links
-    			if(fetchRobotRules != null)
-    				loadLinks(fetchRobotRules);		
+   		if(!checked_base.contains(url.getHost()))
+   		{
+   			// fetch all robots.txt rules for user-agent:
+    		System.out.println(URL);
+    		String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
+    		// load robots.txt rules into links
+    		if(fetchRobotRules != null)
+    			loadLinks(fetchRobotRules);		
     			
-    			checked_base.add(url.getHost());
-    		}
+    		checked_base.add(url.getHost());
+    	}
     		
-    		boolean notDupe = !links.contains(URL) && !links.contains(URL2) &&!links.contains(URL3) &&!links.contains(URL4);    			boolean notForbidden = !disallowed_links.contains(URL) && !disallowed_links.contains(URL2)
-    				&& !disallowed_links.contains(URL3) && !disallowed_links.contains(URL4);
-    		boolean notUnsupported = !URL.contains(".pdf");
-        if (notDupe && notUnsupported && notForbidden) {
-            try {                         
-            		//4. (i) If not add it to the index
-                if (links.size() < limit) {
-                		links.add(URL);
+    	boolean notDupe = !links.contains(URL) && !links.contains(URL2) &&!links.contains(URL3) &&!links.contains(URL4);    			
+    	boolean notForbidden = !disallowed_links.contains(URL) && !disallowed_links.contains(URL2) && !disallowed_links.contains(URL3) && !disallowed_links.contains(URL4);
+    	//boolean notUnsupported = !URL.contains(".pdf");
+    	if (notDupe && notForbidden) {
+          try {                       
+        	  //Get Response Status & Check file type
+        	  Response response = Jsoup.connect(URL).followRedirects(false).ignoreHttpErrors(true).ignoreContentType(true).execute();
+        	  int status = response.statusCode();
+        	  String contentType = response.contentType();
+        	  //System.out.println("Content type:" + contentType);
+
+        	  boolean accepted_content_type = contentType.contains("text/") || 
+                								contentType.contains("application/xml") ||
+                								contentType.contains("application/xhtml+xml");
+                
+        	  //4. (i) If not add it to the index
+        	  if (links.size() < limit && accepted_content_type) {
+                	links.add(URL);
                     System.out.println(URL);
-                }
-                else {
+        	  }
+        	  else {
                 	return;
-                }   
+        	  } 
+                                
+        	  //Fetch the HTML code
+        	  Document document = Jsoup.connect(URL).ignoreHttpErrors(true).get();
+        	  System.out.println("made it");
+        	  producePage(document);
                 
-                //Fetch the HTML code
-                Document document = Jsoup.connect(URL).ignoreHttpErrors(true).get();
-                System.out.println("made it");
-                producePage(document);
-                
-                //To set a delay for accessing the same 
-            		//Thread.sleep(5*1000); 
+        	  //To set a delay for accessing the same 
+        	  //Thread.sleep(5*1000); 
 
-                //Parse the HTML to extract links to other URLs
-                Elements linksOnPage = document.select("a[href]");
-                //Find the number of outlinks in current URL for report
-                int outlink = linksOnPage.size();
+        	  //Parse the HTML to extract links to other URLs
+        	  Elements linksOnPage = document.select("a[href]");
+        	  //Find the number of outlinks in current URL for report
+        	  int outlink = linksOnPage.size();
 
-                //Find the number of images in current URL for report
-                Elements imagesOnPage = document.select("img[src]");
-                int image = imagesOnPage.size();
+        	  //Find the number of images in current URL for report
+        	  Elements imagesOnPage = document.select("img[src]");
+        	  int image = imagesOnPage.size();
               
-                //Create name for new file
-                String directory = "repository/html_" + (links.size()) + ".html";
+        	  //Create name for new file
+        	  String directory = "repository/html_" + (links.size()) + ".html";
+               
                 
-                //Get Response Status
-                Response response = Jsoup.connect(URL).followRedirects(false).ignoreHttpErrors(true).execute();
-                int status = response.statusCode();
+        	  Site newsite = new Site(URL, directory, status, outlink, image);
+        	  sites.add(newsite);
                 
-                Site newsite = new Site(URL, directory, status, outlink, image);
-                sites.add(newsite);
-                
-                //5. For each extracted URL... go back to Step 4.
-                for (Element page : linksOnPage) {
-                		getPageLinks(page.attr("abs:href"));
-                }
+        	  //5. For each extracted URL... go back to Step 4.
+        	  for (Element page : linksOnPage) {
+        		  getPageLinks(page.attr("abs:href"));
+        	  }
             } catch (IOException e) {
                 System.err.println("For '" + URL + "': " + e.getMessage());
             } /*catch (InterruptedException e) {
@@ -287,9 +294,9 @@ public class BasicWebCrawler {
     
     public static void main(String[] args) throws InterruptedException, IOException {		
     		//1. Pick a URL from the frontier
-    		BasicWebCrawler BWC = new BasicWebCrawler(50, "yahoo.com");
+    		BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
     	
-    		BWC.getPageLinks("https://www.yahoo.com");
+    		BWC.getPageLinks("https://www.google.com/trends/");
     		BWC.printToHTML(BWC);
     }
 }
