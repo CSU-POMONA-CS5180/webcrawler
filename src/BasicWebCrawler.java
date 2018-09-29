@@ -26,29 +26,29 @@ public class BasicWebCrawler {
     private String scope; // restrict domain
     
     public BasicWebCrawler() {
-        links = new HashSet<String>();
-        disallowed_links =  new HashSet<String>();
-        checked_base = new HashSet<String>();
-        limit = 0;
+    	links = new HashSet<String>();
+  	disallowed_links =  new HashSet<String>();
+ 	checked_base = new HashSet<String>();
+   	limit = 0;
     	sites = new ArrayList<Site>();
     	scope = "";
     }
 
     public BasicWebCrawler(int limit){
-        links = new HashSet<String>();
-        disallowed_links =  new HashSet<String>();
-        checked_base = new HashSet<String>();
-    	this.limit = limit;
+   	links = new HashSet<String>();
+    	disallowed_links =  new HashSet<String>();
+    	checked_base = new HashSet<String>();
+  	this.limit = limit;
     	sites = new ArrayList<Site>();
     	scope = "";
     }
     
     public BasicWebCrawler(int limit, String scope){
-        links = new HashSet<String>();
-        disallowed_links =  new HashSet<String>();
-        checked_base = new HashSet<String>();
-        this.limit = limit;
-    	sites = new ArrayList<Site>();
+    	links = new HashSet<String>();
+    	disallowed_links =  new HashSet<String>();
+    	checked_base = new HashSet<String>();
+    	this.limit = limit;
+   	sites = new ArrayList<Site>();
     	this.scope = scope;
     }
     
@@ -60,10 +60,10 @@ public class BasicWebCrawler {
     	if(links.size() >= limit || !withinScope || sectionOrForm)
     		return;
     	
-   		String URL2, URL3, URL4 = "";
-   		URL url = new URL(URL);
+   	String URL2, URL3, URL4 = "";
+   	URL url = new URL(URL);
     		    		
-   		if((url.getProtocol() == "http")) {
+   	if((url.getProtocol() == "http")) {
     		URL2 = "https://" + url.getHost() + url.getPath();
     		if(URL.endsWith("/")) {
     			URL3 = URL.substring(0, URL.length()-1);
@@ -74,21 +74,20 @@ public class BasicWebCrawler {
     			URL4 = URL2 + "/";
     		}
    		}
-   		else {
-   			URL2 = "http://" + url.getHost() + url.getPath();
-   			if(URL.endsWith("/")) {
-   				URL3 = URL.substring(0, URL.length()-1);
-   				URL4 = URL2.substring(0, URL2.length()-1);
-   			}
-   			else {
-   				URL3 = URL + "/";
-   				URL4 = URL2 + "/";
-   			}
+   	else {
+   		URL2 = "http://" + url.getHost() + url.getPath();
+   		if(URL.endsWith("/")) {
+   			URL3 = URL.substring(0, URL.length()-1);
+   			URL4 = URL2.substring(0, URL2.length()-1);
    		}
+   		else {
+   			URL3 = URL + "/";
+   			URL4 = URL2 + "/";
+   		}
+   	}
     		
-   		if(!checked_base.contains(url.getHost()))
-   		{
-   			// fetch all robots.txt rules for user-agent:
+   	if(!checked_base.contains(url.getHost())){
+   		// fetch all robots.txt rules for user-agent:
     		System.out.println(URL);
     		String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
     		// load robots.txt rules into links
