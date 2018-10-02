@@ -5,6 +5,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -12,6 +13,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.SocketException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -86,8 +88,8 @@ public class BasicWebCrawler {
         	  } 
                                 
         	  //Fetch the HTML code
-        	  Document document = Jsoup.connect(URL).ignoreHttpErrors(true).get();
-        	  System.out.println("made it");
+        	  Document document = Jsoup.connect(URL).ignoreHttpErrors(true).timeout(5*1000).get();
+        	  System.out.println(links.size() + "made it");
         	  
         	  //Produce html document
         	  producePage(document);
@@ -196,19 +198,26 @@ public class BasicWebCrawler {
 	 * @return String[] all disallowed addresses
 	 * @throws IOException 
 	 */
-	public String[] fetchRobotRules(String URL) throws IOException {
+	public String[] fetchRobotRules(String URL) throws IOException, SocketException {
 
 		ArrayList<String> roboRules = new ArrayList<String>();
 		
 		String[] disallowedURL = null;
-		
 		//Check if robots.txt exist
 		URL url = new URL(URL);
-		Response response = Jsoup.connect("https://" + url.getHost() + "/robots.txt").followRedirects(false).ignoreHttpErrors(true).execute();
-        int status = response.statusCode();        
-        if (status == 404) {
+		
+		//Previously needed this to avoid crash if robots.txt doesn't exist
+		/*try {
+			Response response = Jsoup.connect("https://" + url.getHost() + "/robots.txt").followRedirects(false).ignoreHttpErrors(true).execute();
+			int status = response.statusCode();        
+					
+			if (status == 404) {
         		return disallowedURL;
-        }
+			}
+		} catch (SocketException ex) {
+			System.out.println("continue");
+		}*/
+        
 		
 		try(BufferedReader input = new BufferedReader(
 				new InputStreamReader(new URL( URL + "/robots.txt").openStream())))	// getting all input from robots.txt 
@@ -236,7 +245,8 @@ public class BasicWebCrawler {
 				disallowedURL[i] = URL + roboRules.get(i).substring(10);
 			}
 			
-		}catch(Exception e) {
+		}
+		catch(Exception e) {
 			System.out.println("file not found");						// file not found. only yahoo.com did this when testing for some reason
 		}
 		return disallowedURL;
@@ -318,6 +328,7 @@ public class BasicWebCrawler {
 		System.out.println(URL);
 		// fetch all robots.txt rules for user-agent:
 		String[] fetchRobotRules = fetchRobotRules("https://" + url.getHost());		
+
 		// load robots.txt rules into links, if it exists
 		if(fetchRobotRules != null)
 			loadLinks(fetchRobotRules);		
@@ -327,14 +338,14 @@ public class BasicWebCrawler {
 	
 	public boolean passPrimaryConstraint(String URL) {
 		boolean sectionOrForm = URL.contains("?") || URL.contains("#");
-    	boolean withinScope = URL.contains(scope);
+		boolean withinScope = URL.contains(scope);
     	
     	return !sectionOrForm && withinScope;
 	}
 	
 	public boolean passSecondaryConstraint(String URL, String[] URLS) {
 		boolean notDupe = !links.contains(URL) && !links.contains(URLS[0]) &&!links.contains(URLS[1]) &&!links.contains(URLS[2]);    			
-    	boolean notForbidden = !disallowed_links.contains(URLS[0]) && !disallowed_links.contains(URLS[1]) && !disallowed_links.contains(URLS[2]) && !disallowed_links.contains(URL);
+		boolean notForbidden = !disallowed_links.contains(URLS[0]) && !disallowed_links.contains(URLS[1]) && !disallowed_links.contains(URLS[2]) && !disallowed_links.contains(URL);
     	
     	return notDupe && notForbidden;
 	}
@@ -342,7 +353,9 @@ public class BasicWebCrawler {
 	public boolean passLastConstraint(Response response) {
 		String contentType = response.contentType();
 		//System.out.println("Content type:" + contentType);
-
+		if(contentType == null)
+			return true;
+		
 		boolean accepted_content_type = contentType.contains("text/") || 
           								contentType.contains("application/xml") ||
           								contentType.contains("application/xhtml+xml");
@@ -351,10 +364,24 @@ public class BasicWebCrawler {
 	}
 	
     public static void main(String[] args) throws InterruptedException, IOException {		
+    		String csvFile = "/Users/wilsenkosasih/desktop/source.csv";
+    		BufferedReader br = new BufferedReader(new FileReader(csvFile));
+    		String line = br.readLine();
     		//1. Pick a URL from the frontier
-    		BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
+    		String[] input = line.split(",",-1);
+    		br.close();
+    		
+    		System.out.println(input[0]);
+    		System.out.println(input[1]);
+    		System.out.println(input[2]);
+    		
+    		BasicWebCrawler BWC = new BasicWebCrawler(Integer.parseInt(input[1]), input[2]);
+        	
+    		BWC.getPageLinks(input[0]);
+    		BWC.printToHTML(BWC);
+    		/*BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
     	
     		BWC.getPageLinks("https://www.google.com/trends/");
-    		BWC.printToHTML(BWC);
+    		BWC.printToHTML(BWC);*/
     }
 }
