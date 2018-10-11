@@ -16,6 +16,7 @@ import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 
 public class BasicWebCrawler {
@@ -57,7 +58,8 @@ public class BasicWebCrawler {
 	
     //Function to crawl a site, given its URL
     public void getPageLinks(String URL) throws InterruptedException, IOException {
-    	//Check if the URL contains specific character "?" (input) and "#" (section), and whether it's within scope
+    	//Check if we have acquired enough number of links specified by input from csv files 
+    	//and if the URL contains specific character "?" (input) and "#" (section), and whether it's within scope
     	if(links.size() >= limit || !passPrimaryConstraint(URL))
     		return;
 	    
@@ -79,29 +81,34 @@ public class BasicWebCrawler {
         	  
                 
         	  //If number of pages crawled is still under the limit & it is an accepted type, add it to the list to be crawled
-        	  if (links.size() < limit && passLastConstraint(response)) {
-                	links.add(URL);
-                    System.out.println(URL);
-        	  }
-        	  else {
+        	  if (!passLastConstraint(response)) {
                 	return;
         	  } 
                                 
         	  //Fetch the HTML code
-        	  Document document = Jsoup.connect(URL).ignoreHttpErrors(true).timeout(5*1000).get();
-        	  System.out.println(links.size() + "made it");
+        	  Document document = Jsoup.connect(URL).ignoreHttpErrors(true)./*timeout(15*1000).*/get();
+              links.add(URL);
+
+              System.out.println(URL);
+        	  System.out.println(links.size() + ": Retrieved the page");
         	  
         	  //Produce html document
         	  producePage(document);
-                
+        	  System.out.println(links.size() + ": Produced the page");
+
         	  //Create entry for report.html
         	  createReportEntry(URL, document, status);
         	  
         	  //Parse the HTML to extract links to other URLs
         	  Elements linksOnPage = document.select("a[href]");
+        	  Elements linksOnPage2 = document.select("link[href]");
+
         	                  
         	  //For each extracted URL... crawl them
         	  for (Element page : linksOnPage) {
+        		  getPageLinks(page.attr("abs:href"));
+        	  }
+        	  for (Element page : linksOnPage2) {
         		  getPageLinks(page.attr("abs:href"));
         	  }
             } catch (IOException e) {
@@ -186,6 +193,7 @@ public class BasicWebCrawler {
 		for(int i = 0; i < input.length ; ++i) {
 			disallowed_links.add(input[i]);
 		}
+		System.out.println("** New Host & Robots.txt: Adding new disallowed links **");
 		System.out.println(disallowed_links.toString());				// used to check disallowed_links data	
 	}
 	
@@ -204,7 +212,7 @@ public class BasicWebCrawler {
 		
 		String[] disallowedURL = null;
 		//Check if robots.txt exist
-		URL url = new URL(URL);
+		//URL url = new URL(URL);
 		
 		//Previously needed this to avoid crash if robots.txt doesn't exist
 		/*try {
@@ -247,7 +255,7 @@ public class BasicWebCrawler {
 			
 		}
 		catch(Exception e) {
-			System.out.println("file not found");						// file not found. only yahoo.com did this when testing for some reason
+			System.out.println("** Robots.txt of new host not found **");						// file not found. only yahoo.com did this when testing for some reason
 		}
 		return disallowedURL;
 	}
@@ -266,7 +274,7 @@ public class BasicWebCrawler {
 		URL url = new URL(URL);
 		String URL2, URL3, URL4 = "";
 		
-	   	if((url.getProtocol() == "http")) {
+	   	if((url.getProtocol().equals("http"))) {
 	    		URL2 = "https://" + url.getHost() + url.getPath();
 	    		if(URL.endsWith("/")) {
 	    			URL3 = URL.substring(0, URL.length()-1);
@@ -304,8 +312,10 @@ public class BasicWebCrawler {
 	public void createReportEntry(String URL, Document document, int status) {
 		//Parse the HTML to extract links to other URLs
 		Elements linksOnPage = document.select("a[href]");
+		Elements linksOnPage2 = document.select("link[href]");
+
   	  	//Find the number of outlinks in current URL for report
-		int outlink = linksOnPage.size();
+		int outlink = linksOnPage.size() + linksOnPage2.size();
 
   	  	//Find the number of images in current URL for report
   	  	Elements imagesOnPage = document.select("img[src]");
@@ -337,16 +347,39 @@ public class BasicWebCrawler {
 	}
 	
 	public boolean passPrimaryConstraint(String URL) {
-		boolean sectionOrForm = URL.contains("?") || URL.contains("#");
+		String[] list = new String[] {"?", "#", ".pdf", ".jpg", "jpeg", "png"};
+		ArrayList <String> checker = new ArrayList<String>();
+		checker.addAll(Arrays.asList(list));
+		
+		boolean sectionOrForm = false;
+		for (String el: checker) {
+			if(URL.contains(el))
+					sectionOrForm = true;
+		}
+		
 		boolean withinScope = URL.contains(scope);
     	
     	return !sectionOrForm && withinScope;
 	}
 	
-	public boolean passSecondaryConstraint(String URL, String[] URLS) {
+	public boolean passSecondaryConstraint(String URL, String[] URLS) throws MalformedURLException {
 		boolean notDupe = !links.contains(URL) && !links.contains(URLS[0]) &&!links.contains(URLS[1]) &&!links.contains(URLS[2]);    			
-		boolean notForbidden = !disallowed_links.contains(URLS[0]) && !disallowed_links.contains(URLS[1]) && !disallowed_links.contains(URLS[2]) && !disallowed_links.contains(URL);
-    	
+		boolean notForbidden = true;
+	
+		for(String str : disallowed_links) {			
+			//System.out.println(str);
+			if(str != null) {
+				str = str.replace("?","\\?");
+				str = str.replace("*",".*");
+			}
+			if(URL.matches(".*" + str + ".*") || URLS[0].matches(".*" + str + ".*") || URLS[1].matches(".*" + str + ".*") || URLS[2].matches(".*" + str + ".*")) {
+				notForbidden = false;
+				break;
+			}
+		}
+
+		//System.out.println(notForbidden);
+		//System.out.println(URL);
     	return notDupe && notForbidden;
 	}
 	
@@ -363,6 +396,15 @@ public class BasicWebCrawler {
 		return accepted_content_type;
 	}
 	
+	/**
+	 * Clean repository directory before producing new html files
+	 */
+	public static void cleanDirectory() {
+		for(File file: new java.io.File("/Users/wilsenkosasih/desktop/repository").listFiles()) 
+		    if (!file.isDirectory()) 
+		        file.delete();
+	}
+	
     public static void main(String[] args) throws InterruptedException, IOException {		
     		String csvFile = "/Users/wilsenkosasih/desktop/source.csv";
     		BufferedReader br = new BufferedReader(new FileReader(csvFile));
@@ -370,18 +412,18 @@ public class BasicWebCrawler {
     		//1. Pick a URL from the frontier
     		String[] input = line.split(",",-1);
     		br.close();
+    		    		
+    		System.out.println("Seed: " + input[0]);
+    		System.out.println("Size: " + input[1]);
+    		System.out.println("Scope: " + input[2]);
     		
-    		System.out.println(input[0]);
-    		System.out.println(input[1]);
-    		System.out.println(input[2]);
+    		cleanDirectory();
     		
     		BasicWebCrawler BWC = new BasicWebCrawler(Integer.parseInt(input[1]), input[2]);
         	
     		BWC.getPageLinks(input[0]);
     		BWC.printToHTML(BWC);
-    		/*BasicWebCrawler BWC = new BasicWebCrawler(50, "google.com");
-    	
-    		BWC.getPageLinks("https://www.google.com/trends/");
-    		BWC.printToHTML(BWC);*/
+    		
+    		System.out.println("List of checked robots.txt: " + BWC.checked_base);
     }
 }
