@@ -101,16 +101,12 @@ public class BasicWebCrawler {
         	  
         	  //Parse the HTML to extract links to other URLs
         	  Elements linksOnPage = document.select("a[href]");
-        	  Elements linksOnPage2 = document.select("link[href]");
 
         	                  
         	  //For each extracted URL... crawl them
         	  for (Element page : linksOnPage) {
         		  getPageLinks(page.attr("abs:href"));
-        	  }
-        	  for (Element page : linksOnPage2) {
-        		  getPageLinks(page.attr("abs:href"));
-        	  }
+        	  }        
             } catch (IOException e) {
                 System.err.println("For '" + URL + "': " + e.getMessage());
             } 
@@ -312,10 +308,9 @@ public class BasicWebCrawler {
 	public void createReportEntry(String URL, Document document, int status) {
 		//Parse the HTML to extract links to other URLs
 		Elements linksOnPage = document.select("a[href]");
-		Elements linksOnPage2 = document.select("link[href]");
 
   	  	//Find the number of outlinks in current URL for report
-		int outlink = linksOnPage.size() + linksOnPage2.size();
+		int outlink = linksOnPage.size();
 
   	  	//Find the number of images in current URL for report
   	  	Elements imagesOnPage = document.select("img[src]");
