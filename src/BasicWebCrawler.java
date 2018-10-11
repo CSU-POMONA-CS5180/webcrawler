@@ -240,7 +240,7 @@ public class BasicWebCrawler {
 								|| line.toLowerCase().contains("sitemap:")) { // arrived at another set of agent rules, or a comment, or sitemap info 
 							break loop;											// so break loop
 						}
-						if(line.toLowerCase().contains("disallow:")) {
+						if(line.toLowerCase().contains("disallow: /")) {
 							roboRules.add(line);						// add line to 
 						}		
 					}			
