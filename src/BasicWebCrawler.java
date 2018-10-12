@@ -356,7 +356,7 @@ public class BasicWebCrawler {
     	
 		boolean validProtocol = URL.contains("https://") || URL.contains("http://");			
 		
-    	return !sectionOrForm && withinScope;
+    	return validProtocol && !sectionOrForm && withinScope;
 	}
 	
 	public boolean passSecondaryConstraint(String URL, String[] URLS) throws MalformedURLException {
