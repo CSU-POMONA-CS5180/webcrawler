@@ -207,21 +207,7 @@ public class BasicWebCrawler {
 		ArrayList<String> roboRules = new ArrayList<String>();
 		
 		String[] disallowedURL = null;
-		//Check if robots.txt exist
-		//URL url = new URL(URL);
-		
-		//Previously needed this to avoid crash if robots.txt doesn't exist
-		/*try {
-			Response response = Jsoup.connect("https://" + url.getHost() + "/robots.txt").followRedirects(false).ignoreHttpErrors(true).execute();
-			int status = response.statusCode();        
-					
-			if (status == 404) {
-        		return disallowedURL;
-			}
-		} catch (SocketException ex) {
-			System.out.println("continue");
-		}*/
-        
+		//Check if robots.txt exist        
 		
 		try(BufferedReader input = new BufferedReader(
 				new InputStreamReader(new URL( URL + "/robots.txt").openStream())))	// getting all input from robots.txt 
@@ -403,7 +389,7 @@ public class BasicWebCrawler {
 	}
 	
     public static void main(String[] args) throws InterruptedException, IOException {		
-    		String csvFile = "/Users/wilsenkosasih/desktop/source.csv";
+    		String csvFile = "/Users/wilsenkosasih/desktop/specification.csv";
     		BufferedReader br = new BufferedReader(new FileReader(csvFile));
     		String line = br.readLine();
     		//1. Pick a URL from the frontier
