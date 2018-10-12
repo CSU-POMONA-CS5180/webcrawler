@@ -342,7 +342,7 @@ public class BasicWebCrawler {
 	}
 	
 	public boolean passPrimaryConstraint(String URL) {
-		String[] list = new String[] {"?", "#", ".pdf", ".jpg", "jpeg", "png"};
+		String[] list = new String[] {"?", "#", ".pdf", ".jpg", "jpeg", "png", "mailto:"};
 		ArrayList <String> checker = new ArrayList<String>();
 		checker.addAll(Arrays.asList(list));
 		
@@ -354,6 +354,8 @@ public class BasicWebCrawler {
 		
 		boolean withinScope = URL.contains(scope);
     	
+		boolean validProtocol = URL.contains("https://") || URL.contains("http://");			
+		
     	return !sectionOrForm && withinScope;
 	}
 	
